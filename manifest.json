@@ -1,0 +1,1 @@
+{"name": "番茄板", "short_name": "番茄板", "start_url": "./pomodoro_board_with_stats.html", "display": "standalone", "background_color": "#ffffff", "theme_color": "#ffffff", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}]}

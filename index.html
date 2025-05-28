@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh">
+<meta charset="utf-8">
+<title>番茄工作板 – 任务总览右侧</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,sans-serif;margin:16px;}
+#container{display:flex;flex-wrap:wrap;gap:16px;}
+.panel{border:1px solid #ccc;border-radius:6px;padding:12px;flex:1 1 300px;min-width:260px;}
+h3{margin-top:0;font-size:1.1rem;text-align:center;}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid #ccc;padding:6px 8px;text-align:center;}
+td[contenteditable]{outline:none;}
+button{padding:6px 10px;cursor:pointer;}
+.delbtn{background:#eee;border:1px solid #bbb;font-size:1rem;}
+li{border:1px solid #ccc;margin-bottom:4px;padding:6px 8px;list-style:none;}
+li[contenteditable]{outline:none;}
+.listDel{float:right;margin-left:8px;}
+@media(max-width:600px){
+  #container{flex-direction:column;}
+}
+</style>
+<body>
+<h2 id="date"></h2>
+
+<div id="container">
+
+  <!-- 今日番茄 -->
+  <section class="panel">
+    <h3>今日番茄</h3>
+    <table id="todayTbl">
+      <thead><tr><th>任务</th><th>预估🍅</th><th>完成🍅</th><th>完成✔</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p><button onclick="addTodayRow()">+ 新任务</button></p>
+  </section>
+
+  <!-- 打断记录 -->
+  <section class="panel">
+    <h3>被打断记录</h3>
+    <ul id="ints"></ul>
+    <p><button onclick="addInt()">+ 记录打断</button></p>
+  </section>
+
+  <!-- 任务总览 (放到最后/右边) -->
+  <section class="panel">
+    <h3>任务总览</h3>
+    <table id="allTbl">
+      <thead><tr><th>截止</th><th>任务</th><th>备注</th><th>完成✔</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p><button onclick="addAllRow()">+ 新任务</button></p>
+  </section>
+
+
+  <!-- 历史统计 -->
+  <section class="panel">
+    <h3>历史完成番茄</h3>
+    <canvas id="statsChart"></canvas>
+  </section>
+</div>
+
+<script>
+const todayStr = new Date().toISOString().slice(0,10);
+document.getElementById('date').textContent = todayStr;
+function $(id){return document.getElementById(id);}
+
+// 通用删除
+function delRow(btn){
+  const tr = btn.closest('tr');
+  const tblId = btn.closest('table').id;
+  tr.remove();
+  if(tblId==='todayTbl') saveToday();
+  else if(tblId==='allTbl') saveAll();
+}
+
+/* 今日番茄 */
+const todayBody = $('todayTbl').querySelector('tbody');
+function addTodayRow(task='', est='', done=0){
+  const tr = todayBody.insertRow();
+  tr.innerHTML = `
+    <td contenteditable>${task}</td>
+    <td contenteditable>${est}</td>
+    <td><button onclick="incTomato(this)">${done}</button></td>
+    <td><button class="delbtn" onclick="delRow(this)">✔</button></td>`;
+  saveToday();
+}
+function incTomato(btn){
+  btn.textContent = +btn.textContent + 1;
+  saveToday();
+}
+function saveToday(){
+  const data=[...todayBody.rows].map(r=>[
+    r.cells[0].textContent.trim(),
+    r.cells[1].textContent.trim(),
+    r.cells[2].firstChild.textContent
+  ]);
+  localStorage.setItem('pomo_today_'+todayStr, JSON.stringify(data));
+}
+function loadToday(){
+  (JSON.parse(localStorage.getItem('pomo_today_'+todayStr)||'[]'))
+    .forEach(([t,e,d])=>addTodayRow(t,e,d));
+}
+
+/* 全任务表 */
+const allBody = $('allTbl').querySelector('tbody');
+function addAllRow(deadline='', task='', note=''){
+  const tr = allBody.insertRow();
+  tr.innerHTML = `
+    <td contenteditable>${deadline}</td>
+    <td contenteditable>${task}</td>
+    <td contenteditable>${note}</td>
+    <td><button class="delbtn" onclick="delRow(this)">✔</button></td>`;
+  saveAll();
+}
+function saveAll(){
+  const data=[...allBody.rows].map(r=>[
+    r.cells[0].textContent.trim(),
+    r.cells[1].textContent.trim(),
+    r.cells[2].textContent.trim()
+  ]);
+  localStorage.setItem('pomo_allTasks', JSON.stringify(data));
+}
+function loadAll(){
+  (JSON.parse(localStorage.getItem('pomo_allTasks')||'[]'))
+    .forEach(([d,t,n])=>addAllRow(d,t,n));
+}
+
+/* 打断记录 */
+const ints = $('ints');
+function addInt(text=''){
+  const li = document.createElement('li');
+  li.contentEditable = true;
+  li.textContent = text;
+  const del = document.createElement('button');
+  del.textContent='✔';
+  del.className='listDel delbtn';
+  del.onclick = ()=>{ li.remove(); saveInts(); };
+  li.appendChild(del);
+  li.oninput = saveInts;
+  ints.appendChild(li);
+  saveInts();
+}
+function saveInts(){
+  const data = [...ints.children].map(li=>li.firstChild.textContent.trim());
+  localStorage.setItem('pomo_interrupt_'+todayStr, JSON.stringify(data));
+}
+function loadInts(){
+  (JSON.parse(localStorage.getItem('pomo_interrupt_'+todayStr)||'[]'))
+    .forEach(txt=>addInt(txt));
+}
+
+loadToday();
+loadAll();
+loadInts();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 统计 localStorage 里 pomo_today_YYYY-MM-DD 键
+function getHistoryData(days=30){
+  const data = {};
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k.startsWith('pomo_today_')){
+      const date = k.slice(11);
+      try{
+        const arr = JSON.parse(localStorage.getItem(k));
+        const total = arr.reduce((sum,row)=> sum + Number(row[2]||0),0);
+        data[date]=total;
+      }catch(e){}
+    }
+  }
+  // 最近 days 天
+  const today = new Date();
+  const labels=[], values=[];
+  for(let d=days-1; d>=0; d--){
+    const day = new Date(today);
+    day.setDate(today.getDate()-d);
+    const ds = day.toISOString().slice(0,10);
+    labels.push(ds);
+    values.push(data[ds]||0);
+  }
+  return {labels, values};
+}
+
+function drawChart(){
+  const ctx = document.getElementById('statsChart');
+  if(!ctx) return;
+  const {labels, values} = getHistoryData(30);
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '完成番茄数',
+        data: values
+      }]
+    },
+    options: {
+      scales: {
+        x: {ticks:{autoSkip:true, maxRotation:45, minRotation:45}},
+        y: {beginAtZero:true, precision:0}
+      }
+    }
+  });
+}
+drawChart();
+</script>
+</body>
+</html>
