@@ -4,24 +4,79 @@
 <title>番茄工作板 – 任务总览右侧</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:system-ui,sans-serif;margin:16px;}
-#container{display:flex;flex-wrap:wrap;gap:16px;}
-.panel{border:1px solid #ccc;border-radius:6px;padding:12px;flex:1 1 300px;min-width:260px;}
-h3{margin-top:0;font-size:1.1rem;text-align:center;}
-table{width:100%;border-collapse:collapse;}
-th,td{border:1px solid #ccc;padding:6px 8px;text-align:center;}
-td[contenteditable]{outline:none;}
-button{padding:6px 10px;cursor:pointer;}
-.delbtn{background:#eee;border:1px solid #bbb;font-size:1rem;}
-li{border:1px solid #ccc;margin-bottom:4px;padding:6px 8px;list-style:none;}
-li[contenteditable]{outline:none;}
-.listDel{float:right;margin-left:8px;}
+body {
+  font-family: system-ui, sans-serif;
+  margin: 16px;
+}
+#date {
+  font-size: 1.2rem;
+  margin-bottom: 4px;
+}
+#container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.panel {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 12px;
+  display: inline-block;
+  min-width: fit-content;
+  max-width: 100%;
+}
+h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  text-align: center;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: center;
+}
+td[contenteditable] {
+  outline: none;
+}
+button {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.delbtn {
+  background: #eee;
+  border: 1px solid #bbb;
+  font-size: 1rem;
+}
+li {
+  border: 1px solid #ccc;
+  margin-bottom: 4px;
+  padding: 6px 8px;
+  list-style: none;
+}
+li[contenteditable] {
+  outline: none;
+}
+.listDel {
+  float: right;
+  margin-left: 8px;
+}
+input[type="text"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"] {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
 @media(max-width:600px){
   #container{flex-direction:column;}
 }
 </style>
 <body>
 <h2 id="date"></h2>
+<input id="quoteInput" placeholder="写一句激励自己的话吧…" style="width:100%;padding:6px 10px;margin-bottom:12px;font-size:0.9rem;border:1px solid #ccc;border-radius:4px;">
 
 <div id="container">
 
@@ -38,11 +93,14 @@ li[contenteditable]{outline:none;}
   <!-- 打断记录 -->
   <section class="panel">
     <h3>被打断记录</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      <input id="intInput" placeholder="被打断的事情..." style="flex:1;padding:6px 10px;font-size:0.9rem;border:1px solid #ccc;border-radius:4px;">
+      <button onclick="addIntFromInput()">✔ 添加</button>
+    </div>
     <ul id="ints"></ul>
-    <p><button onclick="addInt()">+ 记录打断</button></p>
   </section>
 
-  <!-- 任务总览 (放到最后/右边) -->
+  <!-- 任务总览 -->
   <section class="panel">
     <h3>任务总览</h3>
     <table id="allTbl">
@@ -51,7 +109,6 @@ li[contenteditable]{outline:none;}
     </table>
     <p><button onclick="addAllRow()">+ 新任务</button></p>
   </section>
-
 
   <!-- 历史统计 -->
   <section class="panel">
@@ -64,15 +121,6 @@ li[contenteditable]{outline:none;}
 const todayStr = new Date().toISOString().slice(0,10);
 document.getElementById('date').textContent = todayStr;
 function $(id){return document.getElementById(id);}
-
-// 通用删除
-function delRow(btn){
-  const tr = btn.closest('tr');
-  const tblId = btn.closest('table').id;
-  tr.remove();
-  if(tblId==='todayTbl') saveToday();
-  else if(tblId==='allTbl') saveAll();
-}
 
 /* 今日番茄 */
 const todayBody = $('todayTbl').querySelector('tbody');
@@ -141,6 +189,13 @@ function addInt(text=''){
   ints.appendChild(li);
   saveInts();
 }
+function addIntFromInput(){
+  const val = $('intInput').value.trim();
+  if(val){
+    addInt(val);
+    $('intInput').value = '';
+  }
+}
 function saveInts(){
   const data = [...ints.children].map(li=>li.firstChild.textContent.trim());
   localStorage.setItem('pomo_interrupt_'+todayStr, JSON.stringify(data));
@@ -150,6 +205,15 @@ function loadInts(){
     .forEach(txt=>addInt(txt));
 }
 
+/* 删除通用 */
+function delRow(btn){
+  const tr = btn.closest('tr');
+  const tblId = btn.closest('table').id;
+  tr.remove();
+  if(tblId==='todayTbl') saveToday();
+  else if(tblId==='allTbl') saveAll();
+}
+
 loadToday();
 loadAll();
 loadInts();
@@ -157,7 +221,6 @@ loadInts();
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// 统计 localStorage 里 pomo_today_YYYY-MM-DD 键
 function getHistoryData(days=30){
   const data = {};
   for (let i=0;i<localStorage.length;i++){
@@ -171,7 +234,6 @@ function getHistoryData(days=30){
       }catch(e){}
     }
   }
-  // 最近 days 天
   const today = new Date();
   const labels=[], values=[];
   for(let d=days-1; d>=0; d--){
