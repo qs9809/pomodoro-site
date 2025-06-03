@@ -73,6 +73,19 @@ input[type="text"], input[type="number"], input[type="date"], input[type="time"]
 @media(max-width:600px){
   #container{flex-direction:column;}
 }
+/* 保存提示样式 */
+#saveToast {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  background: #444;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  display: none;
+  z-index: 9999;
+}
 </style>
 <body>
 <h2 id="date"></h2>
@@ -117,10 +130,31 @@ input[type="text"], input[type="number"], input[type="date"], input[type="time"]
   </section>
 </div>
 
+<!-- 保存提示 -->
+<div id="saveToast">已保存</div>
+
 <script>
 const todayStr = new Date().toISOString().slice(0,10);
 document.getElementById('date').textContent = todayStr;
 function $(id){return document.getElementById(id);}
+
+/* 保存提示 */
+function showSaveToast() {
+  const toast = $('saveToast');
+  toast.style.display = 'block';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2000);
+}
+
+/* 激励语句保存与加载 */
+const quoteInput = $('quoteInput');
+quoteInput.value = localStorage.getItem('pomo_quote_' + todayStr) || '';
+quoteInput.addEventListener('input', () => {
+  localStorage.setItem('pomo_quote_' + todayStr, quoteInput.value.trim());
+  showSaveToast();
+});
 
 /* 今日番茄 */
 const todayBody = $('todayTbl').querySelector('tbody');
@@ -144,6 +178,7 @@ function saveToday(){
     r.cells[2].firstChild.textContent
   ]);
   localStorage.setItem('pomo_today_'+todayStr, JSON.stringify(data));
+  showSaveToast();
 }
 function loadToday(){
   (JSON.parse(localStorage.getItem('pomo_today_'+todayStr)||'[]'))
@@ -168,6 +203,7 @@ function saveAll(){
     r.cells[2].textContent.trim()
   ]);
   localStorage.setItem('pomo_allTasks', JSON.stringify(data));
+  showSaveToast();
 }
 function loadAll(){
   (JSON.parse(localStorage.getItem('pomo_allTasks')||'[]'))
@@ -199,6 +235,7 @@ function addIntFromInput(){
 function saveInts(){
   const data = [...ints.children].map(li=>li.firstChild.textContent.trim());
   localStorage.setItem('pomo_interrupt_'+todayStr, JSON.stringify(data));
+  showSaveToast();
 }
 function loadInts(){
   (JSON.parse(localStorage.getItem('pomo_interrupt_'+todayStr)||'[]'))
