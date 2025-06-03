@@ -254,6 +254,19 @@ function delRow(btn){
 loadToday();
 loadAll();
 loadInts();
+
+// 自动保存 contenteditable 修改（表格部分）
+function enableAutoSaveEditable(tblId, saveFunc) {
+  const tbl = document.getElementById(tblId);
+  tbl.addEventListener('input', function(e) {
+    if (e.target && e.target.isContentEditable) {
+      saveFunc();
+    }
+  });
+}
+enableAutoSaveEditable('todayTbl', saveToday);
+enableAutoSaveEditable('allTbl', saveAll);
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
