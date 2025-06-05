@@ -150,9 +150,10 @@ function showSaveToast() {
 
 /* 激励语句保存与加载 */
 const quoteInput = $('quoteInput');
-quoteInput.value = localStorage.getItem('pomo_quote_' + todayStr) || '';
+const QUOTE_KEY = 'pomo_quote_static';
+quoteInput.value = localStorage.getItem(QUOTE_KEY) || '';
 quoteInput.addEventListener('input', () => {
-  localStorage.setItem('pomo_quote_' + todayStr, quoteInput.value.trim());
+  localStorage.setItem(QUOTE_KEY, quoteInput.value.trim());
   showSaveToast();
 });
 
